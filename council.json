@@ -1,0 +1,50 @@
+{
+  "_readme": "Each member is any CLI that takes a prompt and prints an answer. Placeholders: {prompt} = full prompt as one argument, {promptfile} = path to a file holding it, {outfile} = per-call output path. Set \"stdin\": true to pipe the prompt instead. output.type: text | json (read .field) | file (read {outfile}). own_folder: true = that member works in the run folder and reads --cwd material by absolute path, so its sandbox can only write into the throwaway run folder. workspace_files: optional files copied into that run folder first. Run 'python3 committee.py --check' after any edit.",
+  "timeout_seconds": 900,
+  "max_parallel": 4,
+  "chair": "claude",
+  "chair_role": "roles/chair.md",
+  "members": [
+    {
+      "name": "claude",
+      "role": "roles/lead-analyst.md",
+      "cmd": ["claude", "-p", "{prompt}",
+              "--output-format", "json",
+              "--permission-mode", "dontAsk",
+              "--allowedTools", "Read,Grep,Glob,WebSearch,WebFetch"],
+      "output": {"type": "json", "field": "result", "error_field": "is_error"}
+    },
+    {
+      "name": "codex",
+      "role": "roles/operator.md",
+      "cmd": ["codex", "exec",
+              "--sandbox", "read-only",
+              "--skip-git-repo-check",
+              "--ephemeral",
+              "--output-last-message", "{outfile}",
+              "{prompt}"],
+      "output": {"type": "file"}
+    },
+    {
+      "name": "grok",
+      "role": "roles/devils-advocate.md",
+      "cmd": ["grok", "-p", "{prompt}",
+              "--output-format", "plain",
+              "--no-auto-update",
+              "--max-turns", "25",
+              "--deny", "Edit"],
+      "env": {"GROK_SANDBOX": "workspace", "GROK_DISABLE_AUTOUPDATER": "1"},
+      "own_folder": true,
+      "output": {"type": "text"}
+    },
+    {
+      "name": "agy",
+      "role": "roles/risk-officer.md",
+      "cmd": ["agy", "-p", "{prompt}",
+              "--output-format", "json",
+              "--print-timeout", "14m",
+              "--sandbox"],
+      "output": {"type": "json", "field": "response", "status_field": "status", "status_ok": "SUCCESS"}
+    }
+  ]
+}
